@@ -1,152 +1,141 @@
 import React from 'react';
-import Layout from '../Layout';
+import Layout from '../Layouts/Layout';
 import DashBoardHeader from "./DashBoardHeader";
-import Board from './Board';
+import Column from './Column';
+import {DragDropContext} from 'react-beautiful-dnd';
+import axios from 'axios';
 import plus from '../../images/plus_icon.svg';
 
-const arr = [
-    {
-        id: 0,
-        status: 'backlog',
-        text: 'Company website redesign.',
-        priority: 'low',
-        user: 0
-    },
-    {
-        id: 1,
-        status: 'progress',
-        text: 'Research and strategy for upcoming projects.',
-        priority: 'high',
-        user: 0
-    },
-    {
-        id: 2,
-        status: 'review',
-        text: 'Dashboard layout design.',
-        priority: 'med',
-        user: 0
-    },
-    {
-        id: 3,
-        status: 'complete',
-        text: 'Review client spec document and give feedback.',
-        priority: 'low',
-        user: 0
-    },
-    {
-        id: 4,
-        status: 'backlog',
-        text: 'Mobile app login process prototype.',
-        priority: 'med',
-        user: 0
-    },
-    {
-        id: 5,
-        status: 'backlog',
-        text: 'Onboarding designs.',
-        priority: 'high',
-        user: 0
-    },
-    {
-        id: 6,
-        status: 'progress',
-        text: 'Account profile flow diagrams.',
-        priority: 'med',
-        user: 0
-    },
-    {
-        id: 7,
-        status: 'progress',
-        text: 'Slide templates for client pitch project.',
-        priority: 'low',
-        user: 0
-    },
-    {
-        id: 8,
-        status: 'progress',
-        text: 'Review administator console designs.',
-        priority: 'low',
-        user: 0
-    },
-    {
-        id: 9,
-        status: 'review',
-        text: 'Social media posts.',
-        priority: 'high',
-        user: 0
-    },
-    {
-        id: 10,
-        status: 'review',
-        text: 'Shopping cart and product catalog wireframes.',
-        priority: 'low',
-        user: 0
-    },
-    {
-        id: 11,
-        status: 'review',
-        text: 'End user flow charts.',
-        priority: 'med',
-        user: 0
-    },
-    {
-        id: 12,
-        status: 'complete',
-        text: 'Navigation designs.',
-        priority: 'med',
-        user: 0
-    },
-    {
-        id: 13,
-        status: 'complete',
-        text: 'User profile prototypes.',
-        priority: 'high',
-        user: 0
-    },
-    {
-        id: 14,
-        status: 'complete',
-        text: 'Create style guide based on previous feedback.',
-        priority: 'high',
-        user: 0
+
+class DashBoard extends React.Component {
+    state = {
+        tasks: {},
+        boards: [],
+        currentBoard: ""
+    };
+
+    componentDidMount() {
+        this.getBoards();
     }
-];
 
+    getBoards = () => {
+        axios.get('http://localhost:3004/boards')
+            .then(res => {
+                this.setState({boards: res.data, currentBoard: res.data[0].name});
+                this.getTasks(0);
+            })
+    };
 
-const DashBoard = () => {
-    return (
-        <Layout>
-            <div className="dashBoard container">
-                <DashBoardHeader/>
-                <div className="boards">
-                    <Board
-                        title = "Backlog"
-                        tasks = {arr.filter(task => task.status === 'backlog')}
-                        color = "linear-gradient(134deg, #c781ff 0%, #e57373 100%)"
+    handleBoard = (board) => {
+        this.setState({currentBoard: board.name});
+        this.getTasks(board.id)
+    };
+
+    getTasks = (boardId) => {
+        axios.get(`http://localhost:3004/tasks?boardId=${boardId}`)
+            .then(res => {
+                res.data.length !== 0 ?
+                    this.setState({tasks: res.data[0].tasks})
+                    :
+                    this.setState({tasks: {}})
+            })
+    };
+
+    onDragEnd = result => {
+        const {destination, source} = result;
+        const {tasks} = this.state;
+
+        if (!destination) {
+            return;
+        }
+
+        if (destination.droppableId === source.droppableId && destination.index === source.index) {
+            return;
+        }
+
+        const startColumn = source.droppableId;
+        const finishColumn = destination.droppableId;
+
+        if (startColumn === finishColumn) {
+            const newColumnTasks = [...tasks[startColumn]];
+
+            const task = newColumnTasks.splice(source.index, 1);
+            newColumnTasks.splice(destination.index, 0, task[0]);
+
+            const newTasks = {
+                ...tasks,
+                [startColumn]: newColumnTasks
+            };
+
+            this.setState({
+                tasks: newTasks
+            });
+
+            return;
+        }
+
+        const startTasks = [...tasks[startColumn]];
+        const dropTask = startTasks.splice(source.index, 1);
+
+        const finishTasks = [...tasks[finishColumn]];
+        finishTasks.splice(destination.index, 0, dropTask[0]);
+
+        const newTasksColumns = {
+            ...tasks,
+            [startColumn]: startTasks,
+            [finishColumn]: finishTasks,
+        };
+
+        this.setState({
+            tasks: newTasksColumns
+        });
+    };
+
+    render() {
+        const {boards, tasks, currentBoard} = this.state;
+
+        return (
+            <Layout>
+                <div className="dashBoard container">
+                    <DashBoardHeader currentBoard={currentBoard}
+                                     handleBoard={this.handleBoard}
+                                     boards={boards}
                     />
-                    <Board
-                        title = "Progress"
-                        tasks = {arr.filter(task => task.status === 'progress')}
-                        color = "linear-gradient(135deg, #ff9784 0%, #ffb74d 100%)"
-                    />
-                    <Board
-                        title = "Review"
-                        tasks = {arr.filter(task => task.status === 'review')}
-                        color = "linear-gradient(134deg, #9ea7fc 0%, #65b6f7 100%)"
-                    />
-                    <Board
-                        title = "Complete"
-                        tasks = {arr.filter(task => task.status === 'complete')}
-                        color = "linear-gradient(-45deg, #81d5ee 0%, #7ed492 100%)"
-                    />
+
+                    <div className="boards">
+                        <DragDropContext
+                            onDragEnd={this.onDragEnd}
+                        >
+                            <Column
+                                title="backlog"
+                                tasks={tasks.backlog}
+                                color="linear-gradient(134deg, #c781ff 0%, #e57373 100%)"
+                            />
+                            <Column
+                                title="progress"
+                                tasks={tasks.progress}
+                                color="linear-gradient(135deg, #ff9784 0%, #ffb74d 100%)"
+                            />
+                            <Column
+                                title="review"
+                                tasks={tasks.review}
+                                color="linear-gradient(134deg, #9ea7fc 0%, #65b6f7 100%)"
+                            />
+                            <Column
+                                title="complete"
+                                tasks={tasks.complete}
+                                color="linear-gradient(-45deg, #81d5ee 0%, #7ed492 100%)"
+                            />
+                        </DragDropContext>
+                    </div>
+
+                    <button className="btn-add-task">
+                        <img src={plus} alt="Add new tasks"/>
+                    </button>
                 </div>
-
-                <button className="btn-add-task">
-                    <img src={plus} alt="Add new tasks"/>
-                </button>
-            </div>
-        </Layout>
-    );
-};
+            </Layout>
+        )
+    }
+}
 
 export default DashBoard;

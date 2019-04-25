@@ -1,7 +1,7 @@
 import React from 'react';
-import notification from '../images/notification_icon.svg';
-import mail from '../images/mail_icon.svg';
-import Avatar from "./Avatar";
+import notification from '../../images/notification_icon.svg';
+import mail from '../../images/mail_icon.svg';
+import Avatar from "../Avatar";
 
 const Header = () => {
     return (
